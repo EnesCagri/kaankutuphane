@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Book } from "@/types";
+import { BookOpen, BookX } from "lucide-react";
 
 interface BookCardProps {
   book: Book;
@@ -10,16 +11,10 @@ interface BookCardProps {
 }
 
 export function BookCard({ book, isRead = false }: BookCardProps) {
-  const borderColor = isRead
-    ? "border-[#2ecc71] border-4" // Yeşil çerçeve - okunmuş
-    : "border-[#3498db] border-4"; // Mavi çerçeve - okunmamış
-
   return (
     <div className="flex flex-col items-center w-full">
       <Link href={`/book/${book.id}`} className="w-full">
-        <div
-          className={`group relative aspect-[2/3] w-full overflow-hidden rounded-xl cursor-pointer transition-all duration-300 hover:scale-[1.05] hover:shadow-2xl ${borderColor}`}
-        >
+        <div className="group relative aspect-[2/3] w-full overflow-hidden rounded-xl cursor-pointer transition-all duration-300 hover:scale-[1.05] hover:shadow-2xl border-2 border-gray-200 hover:border-[#2ecc71]">
           {/* Book Image */}
           <div className="absolute inset-0">
             <Image
@@ -28,6 +23,21 @@ export function BookCard({ book, isRead = false }: BookCardProps) {
               fill
               className="object-cover transition-transform duration-500 group-hover:scale-110"
             />
+          </div>
+
+          {/* Read Status Badge */}
+          <div className="absolute top-2 right-2 z-20">
+            {isRead ? (
+              <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-[#2ecc71] text-white rounded-lg shadow-lg">
+                <BookOpen className="h-4 w-4" />
+                <span className="text-xs font-semibold">Okundu</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-[#3498db] text-white rounded-lg shadow-lg">
+                <BookX className="h-4 w-4" />
+                <span className="text-xs font-semibold">Okunmadı</span>
+              </div>
+            )}
           </div>
 
           {/* Gradient Overlay for Text Readability */}

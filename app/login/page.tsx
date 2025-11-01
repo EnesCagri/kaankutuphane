@@ -49,7 +49,7 @@ export default function LoginPage() {
             <Book className="h-8 w-8 text-white" />
           </div>
           <CardTitle className="text-2xl font-bold text-[#2ecc71]">
-            Kütüphane Takas Sistemi
+            kütüpweb
           </CardTitle>
           <CardDescription className="text-base">
             Hesabınıza giriş yapın

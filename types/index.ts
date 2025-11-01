@@ -4,6 +4,7 @@ export interface User {
   username: string;
   password?: string; // Only in mock data, never stored in localStorage
   role: "student" | "teacher"; // teacher = admin rolü
+  avatarUrl?: string; // Profil fotoğrafı URL'i (base64 veya URL)
 }
 
 export interface Book {

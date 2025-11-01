@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import {
   Dialog,
   DialogContent,
@@ -187,8 +187,15 @@ export default function BookDetailPage() {
     return null;
   }
 
+  // Get unique readers (remove duplicates - same user reading same book multiple times)
+  const uniqueUserIds = new Set<string>();
   const readers = readingStatuses
     .map((status) => {
+      // Skip if we've already seen this user for this book
+      if (uniqueUserIds.has(status.userId)) {
+        return null;
+      }
+      uniqueUserIds.add(status.userId);
       const user = allUsers.find((u) => u.id === status.userId);
       return user;
     })
@@ -404,20 +411,28 @@ export default function BookDetailPage() {
                 </div>
               ) : (
                 <div className="flex flex-wrap gap-3">
-                  {readers.map((reader) => (
-                    <Badge
-                      key={reader.id}
-                      variant="secondary"
-                      className="bg-[#3498db]/10 text-[#3498db] border border-[#3498db]/20 px-4 py-2 text-sm font-medium"
-                    >
-                      <Avatar className="h-5 w-5 mr-2">
-                        <AvatarFallback className="text-xs bg-[#3498db] text-white">
-                          {reader.name.charAt(0).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      {reader.name}
-                    </Badge>
-                  ))}
+                  {readers
+                    .filter((reader) => reader !== null && reader !== undefined)
+                    .map((reader) => (
+                      <Badge
+                        key={reader.id}
+                        variant="secondary"
+                        className="bg-[#3498db]/10 text-[#3498db] border border-[#3498db]/20 px-4 py-2 text-sm font-medium"
+                      >
+                        <Avatar className="h-5 w-5 mr-2">
+                          {reader?.avatarUrl ? (
+                            <AvatarImage
+                              src={reader.avatarUrl}
+                              alt={reader.name}
+                            />
+                          ) : null}
+                          <AvatarFallback className="text-xs bg-[#3498db] text-white">
+                            {reader?.name?.charAt(0).toUpperCase() || "?"}
+                          </AvatarFallback>
+                        </Avatar>
+                        {reader?.name || "Bilinmeyen"}
+                      </Badge>
+                    ))}
                 </div>
               )}
             </CardContent>

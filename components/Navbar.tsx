@@ -10,9 +10,11 @@ import {
   LogOut,
   PlusCircle,
   Shield,
+  Trophy,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { User } from "@/types";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 export function Navbar() {
   const pathname = usePathname();
@@ -29,7 +31,30 @@ export function Navbar() {
     if (!currentUser && pathname !== "/login" && pathname !== "/register") {
       router.push("/login");
     }
-  }, [pathname, router]);
+
+    // Listen for storage changes to update user avatar
+    const handleStorageChange = () => {
+      const updatedUser = getUser();
+      if (updatedUser) {
+        setUser(updatedUser);
+      }
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    
+    // Also check localStorage periodically for same-tab updates
+    const interval = setInterval(() => {
+      const updatedUser = getUser();
+      if (updatedUser && updatedUser.id === currentUser?.id && updatedUser.avatarUrl !== user?.avatarUrl) {
+        setUser(updatedUser);
+      }
+    }, 1000);
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      clearInterval(interval);
+    };
+  }, [pathname, router, user?.avatarUrl]);
 
   const handleLogout = () => {
     clearUser();
@@ -55,11 +80,22 @@ export function Navbar() {
             <Book className="h-5 w-5 text-white" />
           </div>
           <span className="text-xl font-bold bg-gradient-to-r from-[#2ecc71] to-[#27ae60] bg-clip-text text-transparent">
-            Kütüphane Takas
+            kütüpweb
           </span>
         </Link>
 
         <div className="flex items-center gap-3 md:gap-4">
+          {/* Liderlik Tablosu - Herkes için görünür */}
+          <Link href="/leaderboard">
+            <Button
+              variant="ghost"
+              className="gap-2 text-yellow-600 hover:bg-yellow-50 hover:text-yellow-700 transition-all"
+            >
+              <Trophy className="h-4 w-4" />
+              <span className="hidden sm:inline">Liderlik</span>
+            </Button>
+          </Link>
+
           {isStudent() && (
             <>
               <Link href="/add-book">
@@ -97,11 +133,14 @@ export function Navbar() {
 
           <div className="flex items-center gap-3 pl-3 border-l border-gray-200">
             <div className="hidden sm:flex items-center gap-2">
-              <div className="h-8 w-8 rounded-full bg-gradient-to-br from-[#2ecc71] to-[#27ae60] flex items-center justify-center shadow-md">
-                <span className="text-white text-sm font-semibold">
+              <Avatar className="h-8 w-8 border-2 border-white shadow-md">
+                {user.avatarUrl ? (
+                  <AvatarImage src={user.avatarUrl} alt={user.name} />
+                ) : null}
+                <AvatarFallback className="bg-gradient-to-br from-[#2ecc71] to-[#27ae60] text-white text-sm font-semibold">
                   {user.name.charAt(0).toUpperCase()}
-                </span>
-              </div>
+                </AvatarFallback>
+              </Avatar>
               <span className="text-sm font-medium text-gray-700">
                 {user.name}
               </span>

@@ -95,6 +95,20 @@ export async function registerUser(
   }
 }
 
+export async function updateUser(
+  userId: string,
+  updates: Partial<Omit<User, "id" | "password">>
+): Promise<boolean> {
+  try {
+    const userRef = doc(db, "users", userId);
+    await updateDoc(userRef, updates);
+    return true;
+  } catch (error) {
+    console.error("Error updating user:", error);
+    return false;
+  }
+}
+
 export async function deleteUser(userId: string): Promise<boolean> {
   try {
     await deleteDoc(doc(db, "users", userId));
@@ -408,6 +422,25 @@ export async function getReadingStatuses(
 export async function addReadingStatus(
   status: Omit<ReadingStatus, "readAt">
 ): Promise<ReadingStatus> {
+  // Check if this user already marked this book as read
+  const existingQuery = query(
+    collection(db, "readingStatuses"),
+    where("userId", "==", status.userId),
+    where("bookId", "==", status.bookId)
+  );
+  const existingDocs = await getDocs(existingQuery);
+
+  // If already exists, return existing status instead of creating duplicate
+  if (!existingDocs.empty) {
+    const existingDoc = existingDocs.docs[0];
+    const existingData = existingDoc.data();
+    return {
+      ...status,
+      readAt: timestampToDate(existingData.readAt),
+    } as ReadingStatus;
+  }
+
+  // Create new reading status
   const statusData = {
     ...status,
     readAt: Timestamp.now(),

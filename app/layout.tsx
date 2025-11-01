@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Kütüphane Takas Sistemi",
+  title: "kütüpweb",
   description:
     "Dijital kütüphane takas sistemi - Öğrenciler kitaplarını paylaşabilir",
 };

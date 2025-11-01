@@ -4,7 +4,7 @@ export function Footer() {
       <div className="container mx-auto px-4 py-6">
         <div className="flex flex-col items-center justify-center gap-2 text-sm text-gray-600">
           <p className="text-center">
-            © {new Date().getFullYear()} Kütüphane Takas Sistemi
+            © {new Date().getFullYear()} kütüpweb
           </p>
           <p className="text-center">
             Geliştirici:{" "}
