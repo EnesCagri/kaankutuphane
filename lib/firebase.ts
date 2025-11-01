@@ -4,14 +4,24 @@ import { getAnalytics } from "firebase/analytics";
 import { getFirestore } from "firebase/firestore";
 
 // Your web app's Firebase configuration
+// Environment variables kullanılıyorsa onları kullan, yoksa fallback değerleri kullan
 const firebaseConfig = {
-  apiKey: "AIzaSyApAGzQSUeaJsNREhgiCI0ZI5J9vQ4x0g8",
-  authDomain: "kutupapp.firebaseapp.com",
-  projectId: "kutupapp",
-  storageBucket: "kutupapp.firebasestorage.app",
-  messagingSenderId: "645328695827",
-  appId: "1:645328695827:web:dfa02004e488fdae3fc5e6",
-  measurementId: "G-0FC967L5XR",
+  apiKey:
+    process.env.NEXT_PUBLIC_FIREBASE_API_KEY ||
+    "AIzaSyApAGzQSUeaJsNREhgiCI0ZI5J9vQ4x0g8",
+  authDomain:
+    process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "kutupapp.firebaseapp.com",
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "kutupapp",
+  storageBucket:
+    process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ||
+    "kutupapp.firebasestorage.app",
+  messagingSenderId:
+    process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "645328695827",
+  appId:
+    process.env.NEXT_PUBLIC_FIREBASE_APP_ID ||
+    "1:645328695827:web:dfa02004e488fdae3fc5e6",
+  measurementId:
+    process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID || "G-0FC967L5XR",
 };
 
 // Initialize Firebase (avoid multiple initializations)
