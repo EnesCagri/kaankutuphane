@@ -59,28 +59,6 @@ export function BookCard({ book, isRead = false }: BookCardProps) {
           </div>
         </div>
       </Link>
-
-      {/* Individual Shelf Below Each Book */}
-      <div className="w-full mt-2 flex justify-center">
-        <div
-          className="h-3 w-[95%] rounded-sm"
-          style={{
-            background:
-              "linear-gradient(180deg, #d4a574 0%, #8b6f47 50%, #6b5438 100%)",
-            boxShadow:
-              "0 2px 4px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.3), inset 0 -1px 0 rgba(0, 0, 0, 0.2)",
-          }}
-        >
-          {/* Wood grain texture effect */}
-          <div
-            className="w-full h-full opacity-20"
-            style={{
-              backgroundImage:
-                "repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(0,0,0,0.1) 2px, rgba(0,0,0,0.1) 4px)",
-            }}
-          />
-        </div>
-      </div>
     </div>
   );
 }
