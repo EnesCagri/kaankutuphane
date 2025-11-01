@@ -10,7 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { getUsers, getReadingStatuses } from "@/lib/firestore";
 import { getUser, isAuthenticated } from "@/lib/auth";
 import { User, ReadingStatus } from "@/types";
@@ -166,7 +166,10 @@ export default function LeaderboardPage() {
                     {/* Avatar */}
                     <Avatar className="h-12 w-12 border-2 border-white shadow-md">
                       {item.user.avatarUrl ? (
-                        <AvatarImage src={item.user.avatarUrl} alt={item.user.name} />
+                        <AvatarImage
+                          src={item.user.avatarUrl}
+                          alt={item.user.name}
+                        />
                       ) : null}
                       <AvatarFallback
                         className={`text-white font-semibold ${
