@@ -1,0 +1,45 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users collection - herkes okuyabilir, yeni kayıt için write izni ver
+    match /users/{userId} {
+      allow read: if true;
+      // Yeni kullanıcı kaydı için: gerekli alanlar kontrol ediliyor
+      allow create: if request.resource.data.keys().hasAll(['name', 'username', 'password', 'role', 'createdAt']) &&
+                     request.resource.data.role is string &&
+                     (request.resource.data.role == 'student' || request.resource.data.role == 'teacher');
+      // Update ve delete app logic ile kontrol ediliyor
+      allow update, delete: if true;
+    }
+    
+    // Books collection - herkes okuyabilir, authenticated users yazabilir
+    match /books/{bookId} {
+      allow read: if true;
+      allow create: if true; // Kayıt olmuş herkes kitap ekleyebilir
+      allow update, delete: if true; // Öğretmenler silebilir (app logic ile kontrol)
+    }
+    
+    // Comments collection
+    match /comments/{commentId} {
+      allow read: if true;
+      allow create: if true; // Herkes yorum yazabilir
+      allow delete: if true; // Öğretmenler silebilir (app logic ile kontrol)
+    }
+    
+    // Trade Requests collection
+    match /tradeRequests/{requestId} {
+      allow read: if true;
+      allow create: if true;
+      allow update: if true;
+      allow delete: if true;
+    }
+    
+    // Reading Statuses collection
+    match /readingStatuses/{statusId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if true;
+    }
+  }
+}
+
