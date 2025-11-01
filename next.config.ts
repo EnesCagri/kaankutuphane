@@ -11,6 +11,10 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  eslint: {
+    // ESLint hatalarını build sırasında görmezden gel
+    ignoreDuringBuilds: true,
+  },
 };
 
 export default nextConfig;

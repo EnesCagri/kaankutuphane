@@ -192,7 +192,7 @@ export default function BookDetailPage() {
       const user = allUsers.find((u) => u.id === status.userId);
       return user;
     })
-    .filter(Boolean);
+    .filter((user): user is User => user !== undefined);
 
   const currentUser = getUser();
   const isOwnBook = currentUser?.id === book.addedBy;

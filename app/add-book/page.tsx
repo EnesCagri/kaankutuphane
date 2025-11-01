@@ -214,12 +214,11 @@ export default function AddBookPage() {
 
             <div className="space-y-2">
               <Label htmlFor="genre">Kitap Türü</Label>
-              <Select value={genre} onValueChange={setGenre}>
+              <Select value={genre || undefined} onValueChange={setGenre}>
                 <SelectTrigger className="h-12 bg-white border-gray-300">
                   <SelectValue placeholder="Kitap türünü seçin (opsiyonel)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Tür Seçilmedi</SelectItem>
                   {BOOK_GENRES.map((g) => (
                     <SelectItem key={g} value={g}>
                       {g}
