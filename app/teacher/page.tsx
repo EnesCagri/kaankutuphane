@@ -21,6 +21,8 @@ import {
   getUsers,
   deleteUser,
   deleteReadingStatusesByUserId,
+  getClassrooms,
+  getClassroomById,
 } from "@/lib/firestore";
 import {
   getUser,
@@ -28,8 +30,16 @@ import {
   isTeacher,
   deleteRegisteredUser,
 } from "@/lib/auth";
-import { Book, Comment, User } from "@/types";
-import { Trash2, Shield, Users, BookOpen, MessageSquare } from "lucide-react";
+import { Book, Comment, User, Classroom } from "@/types";
+import {
+  Trash2,
+  Shield,
+  Users,
+  BookOpen,
+  MessageSquare,
+  Plus,
+} from "lucide-react";
+import Link from "next/link";
 
 export default function TeacherPanelPage() {
   const router = useRouter();
@@ -39,6 +49,8 @@ export default function TeacherPanelPage() {
   const [comments, setComments] = useState<Comment[]>([]);
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [readingStatuses, setReadingStatuses] = useState<any[]>([]);
+  const [classrooms, setClassrooms] = useState<Classroom[]>([]);
+  const [selectedClassroomId, setSelectedClassroomId] = useState<string>("");
 
   useEffect(() => {
     const loadData = async () => {
@@ -47,27 +59,45 @@ export default function TeacherPanelPage() {
         return;
       }
 
+      if (!user) return;
+
       try {
+        // Get teacher's classrooms
+        const teacherClassrooms = await getClassrooms(user.id);
+        setClassrooms(teacherClassrooms);
+
+        // Get classroom IDs for filtering
+        const classroomIds = user.classroomIds || [];
+
+        // Load all data
         const [booksData, commentsData, usersData, readingStatusesData] =
           await Promise.all([
             getBooks(),
             getComments(),
-            getUsers(),
+            classroomIds.length > 0 ? getUsers(classroomIds) : getUsers(),
             getReadingStatuses(),
           ]);
 
         setBooks(booksData);
         setComments(commentsData);
         setAllUsers(usersData);
+
+        // Filter students by teacher's classrooms
+        const teacherStudents = usersData.filter(
+          (u) =>
+            u.role === "student" &&
+            u.classroomId &&
+            classroomIds.includes(u.classroomId)
+        );
+        setStudents(teacherStudents);
         setReadingStatuses(readingStatusesData);
-        setStudents(usersData.filter((u) => u.role === "student"));
       } catch (error) {
         console.error("Error loading teacher data:", error);
       }
     };
 
     loadData();
-  }, [router]);
+  }, [router, user]);
 
   const handleDeleteBook = async (bookId: string) => {
     if (confirm("Bu kitabı silmek istediğinize emin misiniz?")) {
@@ -168,33 +198,86 @@ export default function TeacherPanelPage() {
     }
   };
 
+  // Filter data by selected classroom
+  const filteredStudents = selectedClassroomId
+    ? students.filter((s) => s.classroomId === selectedClassroomId)
+    : students;
+
+  // Filter books by students in teacher's classrooms
+  const studentIds = filteredStudents.map((s) => s.id);
+  const filteredBooks = books.filter((b) => studentIds.includes(b.addedBy));
+
+  // Filter comments by students in teacher's classrooms
+  const filteredComments = comments.filter((c) =>
+    studentIds.includes(c.userId)
+  );
+
+  // Get classroom name for a student
+  const getClassroomName = async (classroomId?: string): Promise<string> => {
+    if (!classroomId) return "-";
+    const classroom = await getClassroomById(classroomId);
+    return classroom ? `${classroom.grade}${classroom.className}` : "-";
+  };
+
   if (!user) return null;
 
   return (
     <div className="container mx-auto min-h-screen px-4 py-8">
-      <div className="mb-8 flex items-center gap-3">
-        <Shield className="h-8 w-8 text-[#2ecc71]" />
-        <div>
-          <h1 className="text-3xl font-bold text-gray-800">Öğretmen Paneli</h1>
-          <p className="text-gray-600">
-            Tüm kullanıcıları, kitapları ve yorumları yönetin
-          </p>
+      <div className="mb-8 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Shield className="h-8 w-8 text-[#2ecc71]" />
+          <div>
+            <h1 className="text-3xl font-bold text-gray-800">
+              Öğretmen Paneli
+            </h1>
+            <p className="text-gray-600">
+              Sınıflarınızdaki öğrencileri, kitapları ve yorumları yönetin
+            </p>
+          </div>
         </div>
+        <Link
+          href="/teacher/create-classroom"
+          className="flex items-center gap-2 px-4 py-2 bg-[#2ecc71] text-white rounded-lg hover:bg-[#27ae60] transition-colors"
+        >
+          <Plus className="h-4 w-4" />
+          Yeni Sınıf Oluştur
+        </Link>
       </div>
+
+      {classrooms.length > 0 && (
+        <div className="mb-6">
+          <label className="text-sm font-medium text-gray-700 mb-2 block">
+            Sınıf Filtresi:
+          </label>
+          <select
+            value={selectedClassroomId}
+            onChange={(e) => setSelectedClassroomId(e.target.value)}
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2ecc71]"
+          >
+            <option value="">Tüm Sınıflar</option>
+            {classrooms.map((classroom) => (
+              <option key={classroom.id} value={classroom.id}>
+                {classroom.grade}
+                {classroom.className}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       <Tabs defaultValue="users" className="w-full">
         <TabsList className="grid w-full max-w-2xl grid-cols-3">
           <TabsTrigger value="users">
             <Users className="h-4 w-4 mr-2" />
-            Tüm Kullanıcılar ({allUsers.length})
+            Öğrenciler ({filteredStudents.length})
           </TabsTrigger>
           <TabsTrigger value="books">
             <BookOpen className="h-4 w-4 mr-2" />
-            Kitaplar ({books.length})
+            Kitaplar ({filteredBooks.length})
           </TabsTrigger>
           <TabsTrigger value="comments">
             <MessageSquare className="h-4 w-4 mr-2" />
-            Yorumlar ({comments.length})
+            Yorumlar ({filteredComments.length})
           </TabsTrigger>
         </TabsList>
 
@@ -202,16 +285,26 @@ export default function TeacherPanelPage() {
         <TabsContent value="users" className="mt-6">
           <Card>
             <CardHeader>
-              <CardTitle>Tüm Kullanıcılar</CardTitle>
+              <CardTitle>Öğrencilerim</CardTitle>
               <CardDescription>
-                Toplam {allUsers.length} kullanıcı kayıtlı ({students.length}{" "}
-                öğrenci, {allUsers.length - students.length} öğretmen)
+                Toplam {filteredStudents.length} öğrenci
+                {selectedClassroomId
+                  ? ` (${
+                      classrooms.find((c) => c.id === selectedClassroomId)
+                        ?.grade
+                    }${
+                      classrooms.find((c) => c.id === selectedClassroomId)
+                        ?.className
+                    } sınıfı)`
+                  : ""}
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {allUsers.length === 0 ? (
+              {filteredStudents.length === 0 ? (
                 <p className="text-center text-gray-500 py-8">
-                  Henüz kullanıcı kayıtlı değil
+                  {classrooms.length === 0
+                    ? "Henüz sınıf oluşturmadınız. Önce bir sınıf oluşturun."
+                    : "Bu sınıfta henüz öğrenci yok"}
                 </p>
               ) : (
                 <div className="overflow-x-auto">
@@ -224,7 +317,7 @@ export default function TeacherPanelPage() {
                         <th className="text-left p-3 font-semibold">
                           Kullanıcı Adı
                         </th>
-                        <th className="text-center p-3 font-semibold">Rol</th>
+                        <th className="text-center p-3 font-semibold">Sınıf</th>
                         <th className="text-center p-3 font-semibold">
                           Eklediği Kitap
                         </th>
@@ -237,7 +330,7 @@ export default function TeacherPanelPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {allUsers.map((userItem) => {
+                      {filteredStudents.map((userItem) => {
                         const addedBooks = books.filter(
                           (b) => b.addedBy === userItem.id
                         );
@@ -280,22 +373,25 @@ export default function TeacherPanelPage() {
                               {userItem.username}
                             </td>
                             <td className="p-3 text-center">
-                              <Badge
-                                variant={
-                                  userItem.role === "teacher"
-                                    ? "default"
-                                    : "secondary"
-                                }
-                                className={
-                                  userItem.role === "teacher"
-                                    ? "bg-[#2ecc71] text-white"
-                                    : "bg-[#3498db]/10 text-[#3498db]"
-                                }
-                              >
-                                {userItem.role === "teacher"
-                                  ? "Öğretmen"
-                                  : "Öğrenci"}
-                              </Badge>
+                              {userItem.classroomId ? (
+                                (() => {
+                                  const classroom = classrooms.find(
+                                    (c) => c.id === userItem.classroomId
+                                  );
+                                  return (
+                                    <Badge
+                                      variant="outline"
+                                      className="bg-[#3498db]/10 text-[#3498db] border-[#3498db]"
+                                    >
+                                      {classroom
+                                        ? `${classroom.grade}${classroom.className}`
+                                        : "-"}
+                                    </Badge>
+                                  );
+                                })()
+                              ) : (
+                                <span className="text-gray-400">-</span>
+                              )}
                             </td>
                             <td className="p-3 text-center">
                               <Badge
@@ -347,11 +443,11 @@ export default function TeacherPanelPage() {
             <CardHeader>
               <CardTitle>Kitap Listesi</CardTitle>
               <CardDescription>
-                Toplam {books.length} kitap mevcut
+                Toplam {filteredBooks.length} kitap mevcut
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {books.length === 0 ? (
+              {filteredBooks.length === 0 ? (
                 <p className="text-center text-gray-500 py-8">
                   Henüz kitap eklenmemiş
                 </p>
@@ -372,10 +468,10 @@ export default function TeacherPanelPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {books.map((book) => {
-                        const addedBy = allUsers.find(
-                          (u) => u.id === book.addedBy
-                        );
+                      {filteredBooks.map((book) => {
+                        const addedBy =
+                          filteredStudents.find((u) => u.id === book.addedBy) ||
+                          allUsers.find((u) => u.id === book.addedBy);
                         return (
                           <tr
                             key={book.id}
@@ -417,11 +513,11 @@ export default function TeacherPanelPage() {
             <CardHeader>
               <CardTitle>Yorum Listesi</CardTitle>
               <CardDescription>
-                Toplam {comments.length} yorum mevcut
+                Toplam {filteredComments.length} yorum mevcut
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {comments.length === 0 ? (
+              {filteredComments.length === 0 ? (
                 <p className="text-center text-gray-500 py-8">
                   Henüz yorum yapılmamış
                 </p>
@@ -440,8 +536,10 @@ export default function TeacherPanelPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {comments.map((comment) => {
-                        const book = books.find((b) => b.id === comment.bookId);
+                      {filteredComments.map((comment) => {
+                        const book = filteredBooks.find(
+                          (b) => b.id === comment.bookId
+                        );
                         return (
                           <tr
                             key={comment.id}

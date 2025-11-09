@@ -86,6 +86,19 @@ service cloud.firestore {
       allow create: if true;
       allow update, delete: if true;
     }
+
+    // Classrooms collection
+    match /classrooms/{classroomId} {
+      // Herkes sınıfları okuyabilir (öğrenciler kayıt olurken görebilmeli)
+      allow read: if true;
+      // Öğretmenler sınıf oluşturabilir (teacherId kontrolü app logic'te yapılıyor)
+      allow create: if request.resource.data.keys().hasAll(['grade', 'className', 'teacherId', 'createdAt']) &&
+                     request.resource.data.grade is int &&
+                     request.resource.data.className is string &&
+                     request.resource.data.teacherId is string;
+      // Öğretmenler kendi sınıflarını güncelleyebilir/silebilir (app logic ile kontrol)
+      allow update, delete: if true;
+    }
   }
 }
 ```

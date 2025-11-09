@@ -56,12 +56,12 @@ export async function getAllUsers(): Promise<User[]> {
   return await getUsers();
 }
 
-// Register a new user
+// Register a new student
 export async function register(
   name: string,
   username: string,
   password: string,
-  role: "student" | "teacher" = "student"
+  classroomId: string
 ): Promise<{ success: boolean; user?: User; error?: string }> {
   if (typeof window === "undefined") {
     return { success: false, error: "Kayıt işlemi tarayıcıda yapılmalıdır" };
@@ -87,13 +87,83 @@ export async function register(
     return { success: false, error: "Şifre en az 6 karakter olmalıdır" };
   }
 
+  if (!classroomId) {
+    return { success: false, error: "Lütfen bir sınıf seçin" };
+  }
+
   // Register user in Firestore
-  const result = await registerUser(name, username, password, role);
+  const result = await registerUser(
+    name,
+    username,
+    password,
+    "student",
+    classroomId
+  );
 
   if (result.success && result.user) {
     // Auto login after registration
     setUser(result.user);
     return result;
+  }
+
+  return result;
+}
+
+// Register a new teacher
+export async function registerTeacher(
+  name: string,
+  username: string,
+  password: string,
+  secretCode: string
+): Promise<{ success: boolean; user?: User; error?: string }> {
+  if (typeof window === "undefined") {
+    return { success: false, error: "Kayıt işlemi tarayıcıda yapılmalıdır" };
+  }
+
+  // Validation
+  if (!name.trim()) {
+    return { success: false, error: "İsim gereklidir" };
+  }
+
+  if (!username.trim()) {
+    return { success: false, error: "Kullanıcı adı gereklidir" };
+  }
+
+  if (username.trim().length < 3) {
+    return {
+      success: false,
+      error: "Kullanıcı adı en az 3 karakter olmalıdır",
+    };
+  }
+
+  if (!password || password.length < 6) {
+    return { success: false, error: "Şifre en az 6 karakter olmalıdır" };
+  }
+
+  // Validate secret code
+  if (secretCode !== "okumakguzel") {
+    return { success: false, error: "Geçersiz gizli kod" };
+  }
+
+  // Register teacher in Firestore with empty classroomIds array
+  const result = await registerUser(
+    name,
+    username,
+    password,
+    "teacher",
+    undefined,
+    [] // Initialize with empty array for teachers
+  );
+
+  if (result.success && result.user) {
+    // Ensure classroomIds is set to empty array if not present
+    const userWithClassrooms = {
+      ...result.user,
+      classroomIds: result.user.classroomIds || [],
+    };
+    // Auto login after registration
+    setUser(userWithClassrooms);
+    return { ...result, user: userWithClassrooms };
   }
 
   return result;

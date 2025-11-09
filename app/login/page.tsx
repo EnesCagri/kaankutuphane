@@ -109,14 +109,23 @@ export default function LoginPage() {
               Giriş Yap
             </Button>
 
-            <div className="text-center">
+            <div className="text-center space-y-2">
               <p className="text-sm text-gray-600">
                 Hesabınız yok mu?{" "}
                 <Link
                   href="/register"
                   className="text-[#2ecc71] font-semibold hover:underline"
                 >
-                  Kayıt Ol
+                  Öğrenci Olarak Kayıt Ol
+                </Link>
+              </p>
+              <p className="text-sm text-gray-600">
+                Öğretmen misiniz?{" "}
+                <Link
+                  href="/register-teacher"
+                  className="text-[#2ecc71] font-semibold hover:underline"
+                >
+                  Öğretmen Olarak Kayıt Ol
                 </Link>
               </p>
             </div>

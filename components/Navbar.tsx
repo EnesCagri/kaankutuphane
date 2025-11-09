@@ -27,8 +27,13 @@ export function Navbar() {
     const currentUser = getUser();
     setUser(currentUser);
 
-    // Redirect to login if not authenticated and not already on login or register page
-    if (!currentUser && pathname !== "/login" && pathname !== "/register") {
+    // Redirect to login if not authenticated and not already on login, register, or register-teacher page
+    if (
+      !currentUser &&
+      pathname !== "/login" &&
+      pathname !== "/register" &&
+      pathname !== "/register-teacher"
+    ) {
       router.push("/login");
     }
 
@@ -41,11 +46,15 @@ export function Navbar() {
     };
 
     window.addEventListener("storage", handleStorageChange);
-    
+
     // Also check localStorage periodically for same-tab updates
     const interval = setInterval(() => {
       const updatedUser = getUser();
-      if (updatedUser && updatedUser.id === currentUser?.id && updatedUser.avatarUrl !== user?.avatarUrl) {
+      if (
+        updatedUser &&
+        updatedUser.id === currentUser?.id &&
+        updatedUser.avatarUrl !== user?.avatarUrl
+      ) {
         setUser(updatedUser);
       }
     }, 1000);
@@ -61,7 +70,12 @@ export function Navbar() {
     router.push("/login");
   };
 
-  if (!mounted || pathname === "/login" || pathname === "/register") {
+  if (
+    !mounted ||
+    pathname === "/login" ||
+    pathname === "/register" ||
+    pathname === "/register-teacher"
+  ) {
     return null;
   }
 

@@ -29,6 +29,7 @@ import {
   getUsers,
   updateUser,
   getUserById,
+  getClassroomById,
 } from "@/lib/firestore";
 import { getUser, isAuthenticated, isStudent } from "@/lib/auth";
 import { Book, TradeRequest } from "@/types";
@@ -58,6 +59,7 @@ export default function StudentProfilePage() {
   const [allUsers, setAllUsers] = useState<any[]>([]);
   const [leaderboardRank, setLeaderboardRank] = useState<number | null>(null);
   const [readCount, setReadCount] = useState(0);
+  const [classroomName, setClassroomName] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -88,6 +90,14 @@ export default function StudentProfilePage() {
           if (typeof window !== "undefined") {
             localStorage.setItem("kutupweb_user", JSON.stringify(updatedUser));
           }
+
+          // Get classroom name
+          if (updatedUser.classroomId) {
+            const classroom = await getClassroomById(updatedUser.classroomId);
+            if (classroom) {
+              setClassroomName(`${classroom.grade}${classroom.className}`);
+            }
+          }
         }
 
         // Get user's books
@@ -99,13 +109,15 @@ export default function StudentProfilePage() {
         const userReadBookIds = readingStatusesData
           .filter((r) => r.userId === user.id)
           .map((r) => r.bookId);
-        
+
         // Calculate read count
         const count = userReadBookIds.length;
         setReadCount(count);
 
         // Get all books that user has read, regardless of current owner
-        const readBooks = booksData.filter((b) => userReadBookIds.includes(b.id));
+        const readBooks = booksData.filter((b) =>
+          userReadBookIds.includes(b.id)
+        );
         setReadBooks(readBooks);
 
         // Calculate leaderboard rank
@@ -230,17 +242,17 @@ export default function StudentProfilePage() {
     try {
       const base64 = await convertToBase64(file);
       const success = await updateUser(user!.id, { avatarUrl: base64 });
-      
+
       if (success) {
         // Update local user state
         const updatedUser = { ...user!, avatarUrl: base64 };
         setUser(updatedUser);
-        
+
         // Update localStorage
         if (typeof window !== "undefined") {
           localStorage.setItem("kutupweb_user", JSON.stringify(updatedUser));
         }
-        
+
         alert("Profil fotoğrafı güncellendi!");
       } else {
         alert("Profil fotoğrafı güncellenirken bir hata oluştu");
@@ -290,7 +302,12 @@ export default function StudentProfilePage() {
               <h1 className="text-3xl font-bold text-gray-800 mb-2">
                 {user.name}
               </h1>
-              <p className="text-gray-600 mb-4">@{user.username}</p>
+              <p className="text-gray-600 mb-2">@{user.username}</p>
+              {classroomName && (
+                <p className="text-sm text-gray-500 mb-4">
+                  Sınıf: <span className="font-semibold">{classroomName}</span>
+                </p>
+              )}
 
               {/* Stats */}
               <div className="flex flex-wrap gap-4 justify-center md:justify-start">
@@ -311,7 +328,9 @@ export default function StudentProfilePage() {
                       <div className="text-2xl font-bold text-gray-800">
                         #{leaderboardRank}
                       </div>
-                      <div className="text-xs text-gray-600">Liderlik Sırası</div>
+                      <div className="text-xs text-gray-600">
+                        Liderlik Sırası
+                      </div>
                     </div>
                   </div>
                 )}

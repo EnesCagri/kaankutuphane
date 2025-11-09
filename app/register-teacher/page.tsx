@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -13,80 +13,21 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { register } from "@/lib/auth";
-import {
-  getClassroomsByGrade,
-  createClassroom,
-  getClassrooms,
-} from "@/lib/firestore";
-import { Classroom } from "@/types";
-import { Book, Eye, EyeOff, ArrowLeft } from "lucide-react";
+import { registerTeacher } from "@/lib/auth";
+import { Eye, EyeOff, ArrowLeft, Shield } from "lucide-react";
 
-export default function RegisterPage() {
+export default function RegisterTeacherPage() {
   const router = useRouter();
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [secretCode, setSecretCode] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showSecretCode, setShowSecretCode] = useState(false);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [grade, setGrade] = useState<number | "">("");
-  const [className, setClassName] = useState<string>("");
-  const [availableClassrooms, setAvailableClassrooms] = useState<Classroom[]>(
-    []
-  );
-  const [selectedClassroomId, setSelectedClassroomId] = useState<string>("");
-
-  // Get available class names based on grade
-  const getAvailableClassNames = (): string[] => {
-    if (grade === 5 || grade === 6) {
-      return ["A", "B", "C", "D"];
-    } else if (grade === 7) {
-      return ["A", "B", "C"];
-    }
-    return [];
-  };
-
-  // Fetch classrooms when grade changes
-  useEffect(() => {
-    const fetchClassrooms = async () => {
-      if (grade) {
-        const classrooms = await getClassroomsByGrade(grade);
-        setAvailableClassrooms(classrooms);
-        // Reset selections when grade changes
-        setClassName("");
-        setSelectedClassroomId("");
-      } else {
-        setAvailableClassrooms([]);
-        setClassName("");
-        setSelectedClassroomId("");
-      }
-    };
-    fetchClassrooms();
-  }, [grade]);
-
-  // Update selected classroom when className changes
-  useEffect(() => {
-    if (grade && className) {
-      const matchingClassroom = availableClassrooms.find(
-        (c) => c.grade === grade && c.className === className
-      );
-      if (matchingClassroom) {
-        setSelectedClassroomId(matchingClassroom.id);
-      } else {
-        setSelectedClassroomId("");
-      }
-    }
-  }, [grade, className, availableClassrooms]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -130,42 +71,32 @@ export default function RegisterPage() {
       return;
     }
 
-    if (!grade) {
-      setError("Lütfen bir sınıf seviyesi seçin");
+    if (!secretCode.trim()) {
+      setError("Lütfen gizli kodu girin");
       setIsLoading(false);
       return;
     }
 
-    if (!className) {
-      setError("Lütfen bir sınıf adı seçin");
-      setIsLoading(false);
-      return;
-    }
-
-    // Find or create classroom
-    let classroomId = selectedClassroomId;
-    if (!classroomId) {
-      // Need to create a new classroom, but we need a teacher
-      // For now, we'll get all classrooms and find if any teacher has this classroom
-      // If not, we'll need to create it with a placeholder teacher or show error
-      setError(
-        "Bu sınıf henüz oluşturulmamış. Lütfen öğretmeninizden sınıf oluşturmasını isteyin."
+    try {
+      const result = await registerTeacher(
+        name.trim(),
+        username.trim(),
+        password,
+        secretCode.trim()
       );
-      setIsLoading(false);
-      return;
-    }
 
-    const result = await register(
-      name.trim(),
-      username.trim(),
-      password,
-      classroomId
-    );
-
-    if (result.success && result.user) {
-      router.push("/");
-    } else {
-      setError(result.error || "Kayıt başarısız");
+      if (result.success && result.user) {
+        // Wait a bit to ensure localStorage is updated
+        await new Promise((resolve) => setTimeout(resolve, 200));
+        // Use window.location.href to force a full page reload and re-read from localStorage
+        window.location.href = "/teacher";
+        return; // Don't set isLoading to false as we're redirecting
+      } else {
+        setError(result.error || "Kayıt başarısız");
+        setIsLoading(false);
+      }
+    } catch (error: any) {
+      setError(error.message || "Kayıt sırasında bir hata oluştu");
       setIsLoading(false);
     }
   };
@@ -175,13 +106,13 @@ export default function RegisterPage() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#2ecc71]">
-            <Book className="h-8 w-8 text-white" />
+            <Shield className="h-8 w-8 text-white" />
           </div>
           <CardTitle className="text-2xl font-bold text-[#2ecc71]">
-            Hesap Oluştur
+            Öğretmen Kaydı
           </CardTitle>
           <CardDescription className="text-base">
-            Yeni hesap oluşturun ve kitaplarla buluşun
+            Öğretmen hesabı oluşturun
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -278,67 +209,43 @@ export default function RegisterPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="grade">Sınıf Seviyesi</Label>
-              <Select
-                value={grade ? grade.toString() : ""}
-                onValueChange={(value) => setGrade(parseInt(value))}
-              >
-                <SelectTrigger className="h-12 rounded-lg border-gray-300">
-                  <SelectValue placeholder="Sınıf seviyesi seçin" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="5">5. Sınıf</SelectItem>
-                  <SelectItem value="6">6. Sınıf</SelectItem>
-                  <SelectItem value="7">7. Sınıf</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {grade && (
-              <div className="space-y-2">
-                <Label htmlFor="className">Sınıf Adı</Label>
-                <Select value={className} onValueChange={setClassName}>
-                  <SelectTrigger className="h-12 rounded-lg border-gray-300">
-                    <SelectValue placeholder="Sınıf adı seçin" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {getAvailableClassNames().map((name) => {
-                      const existingClassroom = availableClassrooms.find(
-                        (c) => c.className === name
-                      );
-                      return (
-                        <SelectItem key={name} value={name}>
-                          {name}
-                          {existingClassroom && " (Mevcut)"}
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
-                {className && !selectedClassroomId && (
-                  <p className="text-sm text-amber-600">
-                    Bu sınıf henüz oluşturulmamış. Öğretmeninizden sınıf
-                    oluşturmasını isteyin.
-                  </p>
-                )}
-                {selectedClassroomId && (
-                  <p className="text-sm text-green-600">
-                    {grade}
-                    {className} sınıfına kayıt olacaksınız.
-                  </p>
-                )}
+              <Label htmlFor="secretCode">Gizli Kod</Label>
+              <div className="relative">
+                <Input
+                  id="secretCode"
+                  type={showSecretCode ? "text" : "password"}
+                  placeholder="Gizli kodu girin"
+                  value={secretCode}
+                  onChange={(e) => setSecretCode(e.target.value)}
+                  className="h-12 rounded-lg border-gray-300 pr-10"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowSecretCode(!showSecretCode)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                >
+                  {showSecretCode ? (
+                    <EyeOff className="h-5 w-5" />
+                  ) : (
+                    <Eye className="h-5 w-5" />
+                  )}
+                </button>
               </div>
-            )}
+              <p className="text-xs text-gray-500">
+                Öğretmen kaydı için gizli kod gereklidir
+              </p>
+            </div>
 
             <Button
               type="submit"
               disabled={isLoading}
               className="w-full h-12 rounded-lg bg-[#2ecc71] text-white hover:bg-[#27ae60] text-base font-semibold disabled:opacity-50"
             >
-              {isLoading ? "Kayıt Yapılıyor..." : "Kayıt Ol"}
+              {isLoading ? "Kayıt Yapılıyor..." : "Öğretmen Olarak Kayıt Ol"}
             </Button>
 
-            <div className="text-center space-y-2">
+            <div className="text-center">
               <p className="text-sm text-gray-600">
                 Zaten hesabınız var mı?{" "}
                 <Link
@@ -346,15 +253,6 @@ export default function RegisterPage() {
                   className="text-[#2ecc71] font-semibold hover:underline"
                 >
                   Giriş Yap
-                </Link>
-              </p>
-              <p className="text-sm text-gray-600">
-                Öğretmen misiniz?{" "}
-                <Link
-                  href="/register-teacher"
-                  className="text-[#2ecc71] font-semibold hover:underline"
-                >
-                  Öğretmen Olarak Kayıt Ol
                 </Link>
               </p>
             </div>

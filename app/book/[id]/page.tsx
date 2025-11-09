@@ -50,6 +50,8 @@ export default function BookDetailPage() {
   const [commentText, setCommentText] = useState("");
   const [hasRead, setHasRead] = useState(false);
   const [canRequestTrade, setCanRequestTrade] = useState(false);
+  const [canMarkAsRead, setCanMarkAsRead] = useState(false);
+  const [hasDailyLimit, setHasDailyLimit] = useState(false);
   const [tradeDialogOpen, setTradeDialogOpen] = useState(false);
   const [userBooks, setUserBooks] = useState<Book[]>([]);
   const [selectedBookId, setSelectedBookId] = useState<string>("");
@@ -89,6 +91,29 @@ export default function BookDetailPage() {
           );
           setHasRead(userHasRead);
 
+          // Check if user can mark as read (only their own books - spam önleme)
+          // Kullanıcı sadece sahibi olduğu kitapları "okudum" olarak işaretleyebilir
+          const isOwner = foundBook.addedBy === user.id;
+          setCanMarkAsRead(isOwner);
+
+          // Günlük okuma limiti kontrolü
+          if (isOwner && !userHasRead) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            const userReadingStatuses = await getReadingStatuses(
+              undefined,
+              user.id
+            );
+            const todayReadings = userReadingStatuses.filter((status) => {
+              const readDate = new Date(status.readAt);
+              readDate.setHours(0, 0, 0, 0);
+              return readDate.getTime() === today.getTime();
+            });
+
+            setHasDailyLimit(todayReadings.length > 0);
+          }
+
           // Check if user can request trade (student, not own book, not already requested)
           if (isStudent() && foundBook.addedBy !== user.id) {
             const tradeRequestsData = await getTradeRequests(
@@ -124,16 +149,31 @@ export default function BookDetailPage() {
     const user = getUser();
     if (!user || !book) return;
 
+    // Spam önleme: Sadece kitabın sahibi "okudum" diyebilir
+    if (book.addedBy !== user.id) {
+      alert(
+        "Bu kitabı 'okudum' olarak işaretleyebilmek için kitabın size takas edilmesi gerekiyor."
+      );
+      return;
+    }
+
     if (!hasRead) {
       try {
-        const newStatus = await addReadingStatus({
+        const result = await addReadingStatus({
           bookId: book.id,
           userId: user.id,
         });
-        setHasRead(true);
-        setReadingStatuses([...readingStatuses, newStatus]);
-      } catch (error) {
+
+        if (result.success && result.readingStatus) {
+          setHasRead(true);
+          setReadingStatuses([...readingStatuses, result.readingStatus]);
+          alert("Kitap başarıyla 'okudum' olarak işaretlendi!");
+        } else {
+          alert(result.error || "İşlem sırasında bir hata oluştu");
+        }
+      } catch (error: any) {
         console.error("Error adding reading status:", error);
+        alert(error.message || "İşlem sırasında bir hata oluştu");
       }
     }
   };
@@ -274,22 +314,38 @@ export default function BookDetailPage() {
                   {/* Action Buttons - Integrated into card */}
                   {isStudent() && (
                     <div className="mt-6 flex flex-wrap gap-3">
-                      {!hasRead && (
-                        <Button
-                          onClick={handleMarkAsRead}
-                          className="bg-[#2ecc71] hover:bg-[#27ae60] text-white h-12 px-6 text-base font-semibold shadow-lg hover:shadow-xl transition-all"
-                        >
-                          <Check className="mr-2 h-5 w-5" />
-                          Bu Kitabı Okudum
-                        </Button>
-                      )}
-                      {hasRead && (
-                        <div className="flex items-center gap-2 px-4 py-2 bg-[#2ecc71]/10 rounded-lg border border-[#2ecc71]">
-                          <Check className="h-5 w-5 text-[#2ecc71]" />
-                          <span className="text-[#2ecc71] font-semibold">
-                            Okundu
-                          </span>
-                        </div>
+                      {/* Okudum butonu - sadece kitabın sahibi görebilir */}
+                      {canMarkAsRead && (
+                        <>
+                          {!hasRead && (
+                            <>
+                              {hasDailyLimit ? (
+                                <div className="flex items-center gap-2 px-4 py-2 bg-yellow-50 rounded-lg border border-yellow-300">
+                                  <span className="text-yellow-700 text-sm font-semibold">
+                                    Bugün zaten bir kitap okudunuz. Yarın tekrar
+                                    deneyin.
+                                  </span>
+                                </div>
+                              ) : (
+                                <Button
+                                  onClick={handleMarkAsRead}
+                                  className="bg-[#2ecc71] hover:bg-[#27ae60] text-white h-12 px-6 text-base font-semibold shadow-lg hover:shadow-xl transition-all"
+                                >
+                                  <Check className="mr-2 h-5 w-5" />
+                                  Bu Kitabı Okudum
+                                </Button>
+                              )}
+                            </>
+                          )}
+                          {hasRead && (
+                            <div className="flex items-center gap-2 px-4 py-2 bg-[#2ecc71]/10 rounded-lg border border-[#2ecc71]">
+                              <Check className="h-5 w-5 text-[#2ecc71]" />
+                              <span className="text-[#2ecc71] font-semibold">
+                                Okundu
+                              </span>
+                            </div>
+                          )}
+                        </>
                       )}
 
                       {canRequestTrade && (

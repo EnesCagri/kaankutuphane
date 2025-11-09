@@ -1,3 +1,11 @@
+export interface Classroom {
+  id: string;
+  grade: number; // 5, 6, or 7
+  className: string; // "A", "B", "C", "D" for grades 5-6; "A", "B", "C" for grade 7
+  teacherId: string; // Reference to teacher user
+  createdAt: Date;
+}
+
 export interface User {
   id: string;
   name: string;
@@ -5,6 +13,8 @@ export interface User {
   password?: string; // Only in mock data, never stored in localStorage
   role: "student" | "teacher"; // teacher = admin rolü
   avatarUrl?: string; // Profil fotoğrafı URL'i (base64 veya URL)
+  classroomId?: string; // For students - references classroom.id
+  classroomIds?: string[]; // For teachers - array of classroom.id references
 }
 
 export interface Book {

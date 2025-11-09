@@ -129,7 +129,7 @@ export default function AddBookPage() {
     }
 
     try {
-      await addBook({
+      const result = await addBook({
         title: title.trim(),
         author: author.trim(),
         description: description.trim(),
@@ -140,11 +140,15 @@ export default function AddBookPage() {
         addedBy: user.id, // İlk ekleyen kişi kitabın sahibi olur
       });
 
-      alert("Kitap başarıyla eklendi!");
-      router.push("/");
-    } catch (error) {
+      if (result.success && result.book) {
+        alert("Kitap başarıyla eklendi!");
+        router.push("/");
+      } else {
+        alert(result.error || "Kitap eklenirken bir hata oluştu");
+      }
+    } catch (error: any) {
       console.error("Error adding book:", error);
-      alert("Kitap eklenirken bir hata oluştu");
+      alert(error.message || "Kitap eklenirken bir hata oluştu");
     }
   };
 
