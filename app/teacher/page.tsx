@@ -23,6 +23,8 @@ import {
   deleteReadingStatusesByUserId,
   getClassrooms,
   getClassroomById,
+  getTradeRequests,
+  getUserById,
 } from "@/lib/firestore";
 import {
   getUser,
@@ -38,6 +40,8 @@ import {
   BookOpen,
   MessageSquare,
   Plus,
+  RefreshCw,
+  ArrowLeftRight,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -51,53 +55,83 @@ export default function TeacherPanelPage() {
   const [readingStatuses, setReadingStatuses] = useState<any[]>([]);
   const [classrooms, setClassrooms] = useState<Classroom[]>([]);
   const [selectedClassroomId, setSelectedClassroomId] = useState<string>("");
+  const [tradeRequests, setTradeRequests] = useState<any[]>([]);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const loadData = async () => {
+    if (!isAuthenticated() || !isTeacher()) {
+      router.push("/login");
+      return;
+    }
+
+    if (!user) return;
+
+    setIsRefreshing(true);
+    try {
+      // Get updated user data from Firestore to ensure classroomIds is current
+      const updatedUser = await getUserById(user.id);
+      if (updatedUser) {
+        setUser(updatedUser);
+        // Update localStorage
+        if (typeof window !== "undefined") {
+          localStorage.setItem("kutupweb_user", JSON.stringify(updatedUser));
+        }
+      }
+
+      // Get teacher's classrooms
+      const teacherClassrooms = await getClassrooms(user.id);
+      setClassrooms(teacherClassrooms);
+
+      // Get classroom IDs for filtering (use updated user data)
+      const currentUser = updatedUser || user;
+      const classroomIds = currentUser.classroomIds || [];
+
+      // Load all data
+      const [
+        booksData,
+        commentsData,
+        usersData,
+        readingStatusesData,
+        tradeRequestsData,
+      ] = await Promise.all([
+        getBooks(),
+        getComments(),
+        classroomIds.length > 0 ? getUsers(classroomIds) : getUsers(),
+        getReadingStatuses(),
+        getTradeRequests(),
+      ]);
+
+      setBooks(booksData);
+      setComments(commentsData);
+      setAllUsers(usersData);
+
+      // Filter students by teacher's classrooms
+      const teacherStudents = usersData.filter(
+        (u) =>
+          u.role === "student" &&
+          u.classroomId &&
+          classroomIds.includes(u.classroomId)
+      );
+      setStudents(teacherStudents);
+      setReadingStatuses(readingStatusesData);
+
+      // Filter trade requests by students in teacher's classrooms
+      const studentIds = teacherStudents.map((s) => s.id);
+      const filteredTradeRequests = tradeRequestsData.filter(
+        (tr) =>
+          studentIds.includes(tr.fromUserId) || studentIds.includes(tr.toUserId)
+      );
+      setTradeRequests(filteredTradeRequests);
+    } catch (error) {
+      console.error("Error loading teacher data:", error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   useEffect(() => {
-    const loadData = async () => {
-      if (!isAuthenticated() || !isTeacher()) {
-        router.push("/login");
-        return;
-      }
-
-      if (!user) return;
-
-      try {
-        // Get teacher's classrooms
-        const teacherClassrooms = await getClassrooms(user.id);
-        setClassrooms(teacherClassrooms);
-
-        // Get classroom IDs for filtering
-        const classroomIds = user.classroomIds || [];
-
-        // Load all data
-        const [booksData, commentsData, usersData, readingStatusesData] =
-          await Promise.all([
-            getBooks(),
-            getComments(),
-            classroomIds.length > 0 ? getUsers(classroomIds) : getUsers(),
-            getReadingStatuses(),
-          ]);
-
-        setBooks(booksData);
-        setComments(commentsData);
-        setAllUsers(usersData);
-
-        // Filter students by teacher's classrooms
-        const teacherStudents = usersData.filter(
-          (u) =>
-            u.role === "student" &&
-            u.classroomId &&
-            classroomIds.includes(u.classroomId)
-        );
-        setStudents(teacherStudents);
-        setReadingStatuses(readingStatusesData);
-      } catch (error) {
-        console.error("Error loading teacher data:", error);
-      }
-    };
-
     loadData();
-  }, [router, user]);
+  }, [router, user?.id]);
 
   const handleDeleteBook = async (bookId: string) => {
     if (confirm("Bu kitabı silmek istediğinize emin misiniz?")) {
@@ -212,6 +246,12 @@ export default function TeacherPanelPage() {
     studentIds.includes(c.userId)
   );
 
+  // Filter trade requests by students in teacher's classrooms
+  const filteredTradeRequests = tradeRequests.filter(
+    (tr) =>
+      studentIds.includes(tr.fromUserId) || studentIds.includes(tr.toUserId)
+  );
+
   // Get classroom name for a student
   const getClassroomName = async (classroomId?: string): Promise<string> => {
     if (!classroomId) return "-";
@@ -223,7 +263,7 @@ export default function TeacherPanelPage() {
 
   return (
     <div className="container mx-auto min-h-screen px-4 py-8">
-      <div className="mb-8 flex items-center justify-between">
+      <div className="mb-8 flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-3">
           <Shield className="h-8 w-8 text-[#2ecc71]" />
           <div>
@@ -235,13 +275,26 @@ export default function TeacherPanelPage() {
             </p>
           </div>
         </div>
-        <Link
-          href="/teacher/create-classroom"
-          className="flex items-center gap-2 px-4 py-2 bg-[#2ecc71] text-white rounded-lg hover:bg-[#27ae60] transition-colors"
-        >
-          <Plus className="h-4 w-4" />
-          Yeni Sınıf Oluştur
-        </Link>
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={loadData}
+            disabled={isRefreshing}
+            variant="outline"
+            className="flex items-center gap-2"
+          >
+            <RefreshCw
+              className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}
+            />
+            Yenile
+          </Button>
+          <Link
+            href="/teacher/create-classroom"
+            className="flex items-center gap-2 px-4 py-2 bg-[#2ecc71] text-white rounded-lg hover:bg-[#27ae60] transition-colors"
+          >
+            <Plus className="h-4 w-4" />
+            Yeni Sınıf Oluştur
+          </Link>
+        </div>
       </div>
 
       {classrooms.length > 0 && (
@@ -266,7 +319,7 @@ export default function TeacherPanelPage() {
       )}
 
       <Tabs defaultValue="users" className="w-full">
-        <TabsList className="grid w-full max-w-2xl grid-cols-3">
+        <TabsList className="grid w-full max-w-4xl grid-cols-4">
           <TabsTrigger value="users">
             <Users className="h-4 w-4 mr-2" />
             Öğrenciler ({filteredStudents.length})
@@ -278,6 +331,10 @@ export default function TeacherPanelPage() {
           <TabsTrigger value="comments">
             <MessageSquare className="h-4 w-4 mr-2" />
             Yorumlar ({filteredComments.length})
+          </TabsTrigger>
+          <TabsTrigger value="trades">
+            <ArrowLeftRight className="h-4 w-4 mr-2" />
+            Takaslar ({filteredTradeRequests.length})
           </TabsTrigger>
         </TabsList>
 
@@ -569,6 +626,120 @@ export default function TeacherPanelPage() {
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Trade Requests Tab */}
+        <TabsContent value="trades" className="mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Takas İstekleri</CardTitle>
+              <CardDescription>
+                Toplam {filteredTradeRequests.length} takas isteği mevcut
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {filteredTradeRequests.length === 0 ? (
+                <p className="text-center text-gray-500 py-8">
+                  Henüz takas isteği yok
+                </p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left p-3 font-semibold">İsteyen</th>
+                        <th className="text-left p-3 font-semibold">
+                          İstenen Kitap
+                        </th>
+                        <th className="text-left p-3 font-semibold">
+                          Karşılık Kitap
+                        </th>
+                        <th className="text-center p-3 font-semibold">Durum</th>
+                        <th className="text-left p-3 font-semibold">Tarih</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredTradeRequests.map((request) => {
+                        const fromUser = allUsers.find(
+                          (u) => u.id === request.fromUserId
+                        );
+                        const toUser = allUsers.find(
+                          (u) => u.id === request.toUserId
+                        );
+                        const requestedBook = books.find(
+                          (b) => b.id === request.requestedBookId
+                        );
+                        const offeredBook = books.find(
+                          (b) => b.id === request.bookId
+                        );
+                        return (
+                          <tr
+                            key={request.id}
+                            className="border-b hover:bg-gray-50"
+                          >
+                            <td className="p-3">
+                              {fromUser?.name || "Bilinmeyen"}
+                            </td>
+                            <td className="p-3">
+                              {requestedBook ? (
+                                <Badge variant="outline">
+                                  {requestedBook.title}
+                                </Badge>
+                              ) : (
+                                <span className="text-gray-400">
+                                  Silinmiş kitap
+                                </span>
+                              )}
+                            </td>
+                            <td className="p-3">
+                              {offeredBook ? (
+                                <Badge variant="outline">
+                                  {offeredBook.title}
+                                </Badge>
+                              ) : (
+                                <span className="text-gray-400">
+                                  Silinmiş kitap
+                                </span>
+                              )}
+                            </td>
+                            <td className="p-3 text-center">
+                              <Badge
+                                variant={
+                                  request.status === "accepted"
+                                    ? "default"
+                                    : request.status === "rejected"
+                                    ? "destructive"
+                                    : "secondary"
+                                }
+                                className={
+                                  request.status === "accepted"
+                                    ? "bg-[#2ecc71] text-white"
+                                    : request.status === "rejected"
+                                    ? "bg-red-500 text-white"
+                                    : "bg-yellow-500 text-white"
+                                }
+                              >
+                                {request.status === "accepted"
+                                  ? "Kabul Edildi"
+                                  : request.status === "rejected"
+                                  ? "Reddedildi"
+                                  : "Beklemede"}
+                              </Badge>
+                            </td>
+                            <td className="p-3 text-gray-500 text-sm">
+                              {new Date(request.createdAt).toLocaleDateString(
+                                "tr-TR"
+                              )}
                             </td>
                           </tr>
                         );
