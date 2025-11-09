@@ -203,14 +203,20 @@ export async function getUsers(classroomIds?: string[]): Promise<User[]> {
       const results = await Promise.all(queries);
       const users: User[] = [];
       results.forEach((snapshot) => {
-        users.push(
-          ...(snapshot.docs.map((doc) => ({
+        snapshot.docs.forEach((doc) => {
+          const data = doc.data();
+          users.push({
             id: doc.id,
-            ...doc.data(),
+            name: data.name,
+            username: data.username,
+            role: data.role,
             password: undefined,
-            createdAt: timestampToDate(doc.data().createdAt),
-          })) as User[])
-        );
+            avatarUrl: data.avatarUrl,
+            classroomId: data.classroomId,
+            classroomIds: data.classroomIds,
+            createdAt: timestampToDate(data.createdAt),
+          } as User);
+        });
       });
       return users;
     }
@@ -220,12 +226,20 @@ export async function getUsers(classroomIds?: string[]): Promise<User[]> {
   }
 
   const usersSnapshot = await getDocs(usersQuery);
-  return usersSnapshot.docs.map((doc) => ({
-    id: doc.id,
-    ...doc.data(),
-    password: undefined, // Don't return password
-    createdAt: timestampToDate(doc.data().createdAt),
-  })) as User[];
+  return usersSnapshot.docs.map((doc) => {
+    const data = doc.data();
+    return {
+      id: doc.id,
+      name: data.name,
+      username: data.username,
+      role: data.role,
+      password: undefined, // Don't return password
+      avatarUrl: data.avatarUrl,
+      classroomId: data.classroomId,
+      classroomIds: data.classroomIds,
+      createdAt: timestampToDate(data.createdAt),
+    } as User;
+  });
 }
 
 export async function getUserById(userId: string): Promise<User | null> {
@@ -234,8 +248,13 @@ export async function getUserById(userId: string): Promise<User | null> {
   const data = userDoc.data();
   return {
     id: userDoc.id,
-    ...data,
+    name: data.name,
+    username: data.username,
+    role: data.role,
     password: undefined,
+    avatarUrl: data.avatarUrl,
+    classroomId: data.classroomId,
+    classroomIds: data.classroomIds,
     createdAt: timestampToDate(data.createdAt),
   } as User;
 }
@@ -299,12 +318,20 @@ export async function getStudentsByClassroom(
     where("role", "==", "student")
   );
   const studentsSnapshot = await getDocs(studentsQuery);
-  return studentsSnapshot.docs.map((doc) => ({
-    id: doc.id,
-    ...doc.data(),
-    password: undefined,
-    createdAt: timestampToDate(doc.data().createdAt),
-  })) as User[];
+  return studentsSnapshot.docs.map((doc) => {
+    const data = doc.data();
+    return {
+      id: doc.id,
+      name: data.name,
+      username: data.username,
+      role: data.role,
+      password: undefined,
+      avatarUrl: data.avatarUrl,
+      classroomId: data.classroomId,
+      classroomIds: data.classroomIds,
+      createdAt: timestampToDate(data.createdAt),
+    } as User;
+  });
 }
 
 export async function updateUser(
